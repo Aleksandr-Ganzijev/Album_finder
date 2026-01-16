@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+
+# PyCharm
+../.idea/
+
+# Jupyter
+../.ipynb_checkpoints/
+
+# Data files
+*.csv
+*.pkl
+
+# Images
+*.png
+*.jpg
+*.jpeg
+
+# Misc
+*.txt
