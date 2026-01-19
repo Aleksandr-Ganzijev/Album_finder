@@ -5,6 +5,7 @@
 __pycache__/
 *.pyc
 .env
+# Files
 output-data.csv
 rym_clean1.csv
 rym_raw1.csv

@@ -60,25 +60,35 @@ tag_weight = 0.8
 
 # Takes only the spotify audio columns and converts them into numpy array
 numpy_spotify_audio = merged[feature_cols].to_numpy()
+
 # Scaler.fit_transform makes it so everything become comparable, without it loudness and tempo overpower everything
 # ^ Make all audio features speak the same numerical language
-# normalize - each row/album vector becomes a point on a unit hypersphere
+# normalize - each row/album vector becomes a point on a unit hypersphere for cos-similarity
 scaler = StandardScaler()
 numpy_spotify_audio_norm = normalize(scaler.fit_transform(numpy_spotify_audio))
-# For every unique tag across albums create one column, value = TF-IDF weight, not just presence
+
+# For every unique tag across albums create one column, value = TF-IDF weight
+# A sciPy sparse matric is created
 numpy_spotify_rym = vectorizer.fit_transform(tag_text)
-# normalize - each album's tag vector becomes a point on a unit hypersphere;
-# should compare distribution not quantity
+
+# normalize - each album's tag vector becomes a point on a unit hypersphere for cos-similarity;
+# should compare distribution not quantity of tags
 numpy_spotify_rym_norm = normalize(numpy_spotify_rym)
+
 # csr_matrix = Put audio in the same container type as tags (convert dense audio matrix to sparse to match TF-IDF format)
+# ^ numpy to SciPy
 # weigh with the values we chose
-# hstack concatenates columns, not rows, [audio features | genre & descriptor features] and rows are the albums
+# hstack concatenates columns, not rows
 numpy_spotify_combined = hstack([audio_weight * csr_matrix(numpy_spotify_audio_norm), tag_weight * numpy_spotify_rym_norm])
 
 
-# Each album now has a column with the spotify qualities and their values as well as genre columns
-# The genre columns hold a value as well, if the album is not included, the value is 0
+# CSR MATRIX!!!!!!
+# [0, 0, 0, 2, 0, 5]
+# data = [2, 5]
+# indices = [3, 5]
+# indptr = [0, 2]
 # All main, secondary genres are included, as well as descriptors
+
 
 # Start a fastAPI
 app = FastAPI()
