@@ -19,7 +19,8 @@ df = df.dropna(subset=["album", "artist", "score"] + feature_cols)
 
 # Load RYM tags
 rym = pd.read_csv("rym_clean1.csv")
-# Normalize keys for a simple merge (improve matching later), creates new columns which should be easier to match
+# Normalize keys for a simple merge (IMPROVE MATCHING LATER),
+# creates new columns which should be easier to match
 df["album_key"] = df["album"].str.lower().str.strip()
 df["artist_key"] = df["artist"].str.lower().str.strip()
 rym["album_key"] = rym["release_name"].str.lower().str.strip()
@@ -83,8 +84,8 @@ combined_csr = hstack([audio_weight * csr_matrix(numpy_spotify_audio_norm), tag_
 
 
 # CSR MATRIX!!!!!!
-# [0, 0, 0, 2, 0, 5]
-# data = [2, 5]
+# [0, 0, 0, 0.82, 0, 0.12]
+# data = [0.82, 0.12]
 # indices = [3, 5]
 # indptr = [0, 2]
 # All main, secondary genres are included, as well as descriptors from spotify and rym (columns)
