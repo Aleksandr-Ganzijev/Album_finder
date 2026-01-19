@@ -69,18 +69,18 @@ scaler = StandardScaler()
 numpy_spotify_audio_norm = normalize(scaler.fit_transform(numpy_spotify_audio))
 
 # For every unique tag across albums create one column, value = TF-IDF weight
-# A SciPy sparse matric is created (scr)
-scr_rym = vectorizer.fit_transform(tag_text)
+# A SciPy sparse matric is created (csr)
+csr_rym = vectorizer.fit_transform(tag_text)
 
 # normalize - each album's tag vector becomes a point on a unit hypersphere for cos-similarity;
 # should compare distribution not quantity of tags
-scr_rym_norm = normalize(scr_rym)
+csr_rym_norm = normalize(csr_rym)
 
 # csr_matrix = Put audio in the same container type as tags (convert dense audio matrix to sparse to match TF-IDF format)
 # ^ numpy to SciPy
 # weigh with the values we chose
 # hstack concatenates columns, not rows
-combined_csr = hstack([audio_weight * csr_matrix(numpy_spotify_audio_norm), tag_weight * scr_rym_norm])
+combined_csr = hstack([audio_weight * csr_matrix(numpy_spotify_audio_norm), tag_weight * csr_rym_norm])
 
 
 # CSR MATRIX!!!!!!
