@@ -172,7 +172,8 @@ def recommend_similar(album_title, data, n=10):
 def recommend(album: str, n: int = 10, min_score: float = 7.5):
     # Find the album in the full dataset, for the mask treat all NaNs as False
     # If masks numpy array contains anything by the match:
-    # Return dictionary with the album and artist, else return as a dictionary
+    # Define the searched_album as the first match in merged
+    # Return dictionary with the album and artist, else return a dictionary with error and empty list
     # This structure makes it clear to the client the search failed and there are no recommendations to show
     # ^ FastAPI automatically converts python dictionaries into JSON responses
     mask = merged["album"].str.lower().str.contains(album.lower(), na=False)
