@@ -16,10 +16,7 @@ feature_cols = ["danceability", "energy", "loudness", "speechiness", "acousticne
                 "instrumentalness", "liveness", "valence", "tempo"]
 # Drop the columns with missing values here
 df = df.dropna(subset=["album", "artist", "score"] + feature_cols)
-# Start a fastAPI
-app = FastAPI()
-# Define a scaler
-scaler = StandardScaler()
+
 # Load RYM tags
 rym = pd.read_csv("rym_clean1.csv")
 # Normalize keys for a simple merge (improve matching later), creates new columns which should be easier to match
@@ -27,12 +24,14 @@ df["album_key"] = df["album"].str.lower().str.strip()
 df["artist_key"] = df["artist"].str.lower().str.strip()
 rym["album_key"] = rym["release_name"].str.lower().str.strip()
 rym["artist_key"] = rym["artist_name"].str.lower().str.strip()
+
 # Merge dataframes
 merged = df.merge(
     rym[["album_key", "artist_key", "primary_genres", "secondary_genres", "descriptors", "avg_rating"]],
     on=["album_key", "artist_key"],
     how="left"
 )
+
 # This builds a weighted bag-of-tags for each album; repeat primary genres to weight them more
 # "rock, rock, indie, shoegaze, psychedelic"
 tag_text = (
@@ -41,6 +40,7 @@ tag_text = (
     merged["secondary_genres"].fillna("") + ", " +
     merged["descriptors"].fillna("")
 )
+
 # This function splits the genres by commas
 def comma_tokenizer(s: str):
     return [t.strip().lower() for t in s.split(",") if t.strip()]
@@ -53,14 +53,17 @@ vectorizer = TfidfVectorizer(
     lowercase=False,
     token_pattern=None
 )
+
 # Here in practice tags are more accurate descriptors than spotify data, so I value it more
 audio_weight = 0.2
 tag_weight = 0.8
+
 # Takes only the spotify audio columns and converts them into numpy array
 numpy_spotify_audio = merged[feature_cols].to_numpy()
 # Scaler.fit_transform makes it so everything become comparable, without it loudness and tempo overpower everything
 # ^ Make all audio features speak the same numerical language
 # normalize - each row/album vector becomes a point on a unit hypersphere
+scaler = StandardScaler()
 numpy_spotify_audio_norm = normalize(scaler.fit_transform(numpy_spotify_audio))
 # For every unique tag across albums create one column, value = TF-IDF weight, not just presence
 numpy_spotify_rym = vectorizer.fit_transform(tag_text)
@@ -77,6 +80,8 @@ numpy_spotify_combined = hstack([audio_weight * csr_matrix(numpy_spotify_audio_n
 # The genre columns hold a value as well, if the album is not included, the value is 0
 # All main, secondary genres are included, as well as descriptors
 
+# Start a fastAPI
+app = FastAPI()
 @app.get("/")
 def home():
     return {"home is where we are not present"}
