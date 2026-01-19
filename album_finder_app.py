@@ -146,7 +146,7 @@ def recommend_similar(album_title, data, n=10):
 
     # This returns the results of each albums similarity to our query as a list of dictionaries
     # First sort by similarity in descending order
-    # Then skip the most similar since it's the album itself
+    # Then skip the most similar since it's the album itself and go until n, which is set by the user
     # .apply(axis=1) passes each row into the lambda, producing a pandas series of dicts
     # Extract the artist, album, pitchfork_score, rym_score and similarity from every other album
     # Since we .tolist() the pandas series where each element is a dictionary,
@@ -170,19 +170,26 @@ def recommend_similar(album_title, data, n=10):
 
 @app.get("/recommend")
 def recommend(album: str, n: int = 10, min_score: float = 7.5):
-    #1. Find the album in the full dataset
+    # Find the album in the full dataset, for the mask treat all NaNs as False
+    # If masks numpy array contains anything by the match:
+    # Return dictionary with the album and artist, else return as a dictionary
+    # This structure makes it clear to the client the search failed and there are no recommendations to show
+    # ^ FastAPI automatically converts python dictionaries into JSON responses
     mask = merged["album"].str.lower().str.contains(album.lower(), na=False)
     if mask.any():
-        searched_album = df[mask].iloc[0]
+        searched_album = merged[mask].iloc[0]
         heading = {
             "album": searched_album["album"],
             "artist": searched_album["artist"],
         }
     else:
         return {"searched": {"error": "Album not found"}, "recommendations": []}
-    #2. FIlter dataset fo recommendations only
+
+    # Filter dataset to only recommend albums that have the min_score threshold
     filtered_df=merged[merged["score"]>=min_score]
-    #3. Generate recommendations from filtered_df
+
+    # Call recommend similar to generate recommendations from filtered_df
+    # We return the heading with the album and artist as well as the list of dictionaries with similar albums
     recs = recommend_similar(searched_album["album"], filtered_df, n)
     return {"searched": heading, "recommendations": recs}
 
