@@ -62,7 +62,7 @@ tag_weight = 0.8
 # Takes only the spotify audio columns and converts them into numpy array
 numpy_spotify_audio = merged[feature_cols].to_numpy()
 
-# Scaler.fit_transform makes it so everything become comparable, without it loudness and tempo overpower everything
+# scaler.fit_transform makes it so everything become comparable, without it loudness and tempo overpower everything
 # ^ Make all audio features speak the same numerical language
 # normalize - each row/album vector becomes a point on a unit hypersphere for cos-similarity
 scaler = StandardScaler()
@@ -99,9 +99,12 @@ def home():
     return {"home is where we are not present"}
 
 def recommend_similar(album_title, data, n=10):
+    # Strip the query and lowercase it, lower for all albums in data
     query = album_title.lower().strip()
     albums_lower = data["album"].str.lower()
 
+    # Search for matches, exact and starts produce dataframes
+    # Matches = dataframe with all matches
     # 1. Exact match
     exact = data[albums_lower == query]
     if not exact.empty:
@@ -115,18 +118,39 @@ def recommend_similar(album_title, data, n=10):
             # 3. Fallback: contains
             contains = data[albums_lower.str.contains(query, na=False)]
             matches = contains
-
     if matches.empty:
         return [{"error": "Album not found"}]
 
+    # Select the first row that matches, idx is the original df index, use it to pull the corresponding row from data
+    # We need row_pos for reference to the corresponding csr matrix since csr does not have indexes, it has rows
     idx = matches.index[0]
     row_pos = data.index.get_loc(idx)
+
+    # Data.index gives the row numbers of data; the csr matrix still behaves like a 2D array, you can index it
+    # Using it to index combined_csr selects the corresponding rows in the csr matrix, ":" copies columns
+    # "Take these specific rows", needed if the data is filtered, and we need the specific rows: score>=min_score
     subset_combined_csr = combined_csr[data.index, :]
+
+    # Cosine similarity happens here, we need row_pos:row_pos+1 for a 2d array shape
+    # The csr matrix still behaves like a 2D array, you can index it (1, n_rows)
+    # .flatten() converts it to a 1D array (n_rows, ) so we can attach it as a column
     sims = cosine_similarity(subset_combined_csr[row_pos:row_pos + 1], subset_combined_csr).flatten()
+
+    # Copy the dataframe and attach similarity to the new df as a column
     sim_df = data.copy()
     sim_df["similarity"] = sims
-    def safe_float(x):
+
+    # This checks the value and makes it parsable for JSON since NaN isn't decoded but None is
+    def safe_nan(x):
         return None if pd.isna(x) or (isinstance(x, float) and math.isnan(x)) else x
+
+    # This returns the results of each albums similarity to our query as a list of dictionaries
+    # First sort by similarity in descending order
+    # Then skip the most similar since it's the album itself
+    # .apply(axis=1) passes each row into the lambda, producing a pandas series of dicts
+    # Extract the artist, album, pitchfork_score, rym_score and similarity from every other album
+    # Since we .tolist() the pandas series where each element is a dictionary,
+    # What returns is a list of dictionaries that is JSON-serializable and works better for manipulation in API
     results = (
         sim_df.sort_values("similarity", ascending=False)
         .iloc[1:n+1]
@@ -134,9 +158,9 @@ def recommend_similar(album_title, data, n=10):
             lambda row: {
                 "artist": row["artist"],
                 "album": row["album"],
-                "pitchfork_score": safe_float(row["score"]),
-                "rym_score": safe_float(row.get("avg_rating", None)),
-                "similarity": safe_float(row["similarity"]),
+                "pitchfork_score": safe_nan(row["score"]),
+                "rym_score": safe_nan(row["avg_rating"]),
+                "similarity": safe_nan(row["similarity"]),
             },
             axis=1
         )
