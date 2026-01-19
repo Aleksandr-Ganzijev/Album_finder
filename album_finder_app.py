@@ -68,18 +68,18 @@ scaler = StandardScaler()
 numpy_spotify_audio_norm = normalize(scaler.fit_transform(numpy_spotify_audio))
 
 # For every unique tag across albums create one column, value = TF-IDF weight
-# A sciPy sparse matric is created
-numpy_spotify_rym = vectorizer.fit_transform(tag_text)
+# A SciPy sparse matric is created (scr)
+scr_rym = vectorizer.fit_transform(tag_text)
 
 # normalize - each album's tag vector becomes a point on a unit hypersphere for cos-similarity;
 # should compare distribution not quantity of tags
-numpy_spotify_rym_norm = normalize(numpy_spotify_rym)
+scr_rym_norm = normalize(scr_rym)
 
 # csr_matrix = Put audio in the same container type as tags (convert dense audio matrix to sparse to match TF-IDF format)
 # ^ numpy to SciPy
 # weigh with the values we chose
 # hstack concatenates columns, not rows
-numpy_spotify_combined = hstack([audio_weight * csr_matrix(numpy_spotify_audio_norm), tag_weight * numpy_spotify_rym_norm])
+combined_csr = hstack([audio_weight * csr_matrix(numpy_spotify_audio_norm), tag_weight * scr_rym_norm])
 
 
 # CSR MATRIX!!!!!!
@@ -87,7 +87,8 @@ numpy_spotify_combined = hstack([audio_weight * csr_matrix(numpy_spotify_audio_n
 # data = [2, 5]
 # indices = [3, 5]
 # indptr = [0, 2]
-# All main, secondary genres are included, as well as descriptors
+# All main, secondary genres are included, as well as descriptors from spotify and rym (columns)
+# Each row represents an album
 
 
 # Start a fastAPI
@@ -96,7 +97,7 @@ app = FastAPI()
 def home():
     return {"home is where we are not present"}
 
-def recommend_similar(album_title, data, feature_cols, n=10):
+def recommend_similar(album_title, data, n=10):
     query = album_title.lower().strip()
     albums_lower = data["album"].str.lower()
 
@@ -119,8 +120,8 @@ def recommend_similar(album_title, data, feature_cols, n=10):
 
     idx = matches.index[0]
     row_pos = data.index.get_loc(idx)
-    subset_numpy_spotify_combined = numpy_spotify_combined[data.index, :]
-    sims = cosine_similarity(subset_numpy_spotify_combined[row_pos:row_pos + 1], subset_numpy_spotify_combined).flatten()
+    subset_combined_csr = combined_csr[data.index, :]
+    sims = cosine_similarity(subset_combined_csr[row_pos:row_pos + 1], subset_combined_csr).flatten()
     sim_df = data.copy()
     sim_df["similarity"] = sims
     def safe_float(x):
@@ -157,7 +158,7 @@ def recommend(album: str, n: int = 10, min_score: float = 7.5):
     #2. FIlter dataset fo recommendations only
     filtered_df=merged[merged["score"]>=min_score]
     #3. Generate recommendations from filtered_df
-    recs = recommend_similar(searched_album["album"], filtered_df, feature_cols, n)
+    recs = recommend_similar(searched_album["album"], filtered_df, n)
     return {"searched": heading, "recommendations": recs}
 
 from fastapi.responses import HTMLResponse
