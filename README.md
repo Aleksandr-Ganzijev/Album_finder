@@ -198,9 +198,3 @@ Key columns:
 * Add artist-based filtering
 * Include release year weighting
 * Enhance UI with sorting and filtering options
-
----
-
-## 🧠 Summary
-
-Album Finder blends **audio analysis** with **crowdsourced genre tagging** to deliver nuanced, high-quality album recommendations. By weighting semantic genre data more heavily than raw audio features, it captures both *sound* and *style* similarity.
